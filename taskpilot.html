@@ -353,6 +353,29 @@ input[type="checkbox"]{accent-color:var(--signal)}select{color-scheme:dark}
   .protocol{justify-content:flex-start}
 }
 
+
+/* ---------- Overview UX polish ---------- */
+.hero{margin-bottom:14px}
+.command.compact-command{padding:16px 18px;margin-bottom:22px}
+.command-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:8px}
+.command-head p{margin:2px 0 0}
+.command-badge{font:700 .58rem 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#62CDA9;border:1px solid #29443A;border-radius:999px;padding:6px 8px;white-space:nowrap}
+.compact-command::before{display:none}
+.quick-prompts{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.prompt-chip{background:rgba(255,255,255,.025);border:1px solid #284239;color:#8EA79E;border-radius:999px;padding:6px 9px;font-size:.72rem}
+.prompt-chip:hover{border-color:#3B6455;color:#CBE4DC;background:rgba(66,214,164,.06)}
+.command .insight.compact{margin-top:10px;padding:10px 12px;font-size:.82rem;line-height:1.45}
+.section-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:4px 0 8px}
+.section-title{font:700 1.05rem 'Space Grotesk',sans-serif}
+.text-link{border:0;background:none;color:#66C9A9;font-weight:700;font-size:.78rem;padding:5px 0}
+.text-link:hover{text-decoration:underline}
+.bottom-grid{margin-top:2px}
+@media(max-width:700px){
+  .command-head{flex-direction:column}
+  .section-head{align-items:flex-start;flex-direction:column}
+  .command-badge{display:none}
+}
+
 </style>
 </head>
 <body>
@@ -455,6 +478,19 @@ function seedTasks() {
     steps: [], createdAt: new Date().toISOString(), completedAt: null,
   }));
 }
+function friendlyDueDate(dateStr) {
+  if (!dateStr) return 'No due date';
+  const today = todayStr();
+  if (dateStr === today) return 'Due today';
+  if (dateStr === addDays(1)) return 'Due tomorrow';
+  if (dateStr === addDays(-1)) return 'Due yesterday';
+  const d = new Date(dateStr + 'T00:00:00');
+  const now = new Date(today + 'T00:00:00');
+  const diff = Math.round((d - now) / 86400000);
+  if (diff < 0) return `Overdue by ${Math.abs(diff)} day${Math.abs(diff) === 1 ? '' : 's'}`;
+  return `Due ${d.toLocaleDateString(undefined, {month:'short', day:'numeric'})}`;
+}
+
 if (!load(LS.seeded, false)) {
   state.tasks = seedTasks();
   save(LS.tasks, state.tasks);
@@ -650,7 +686,7 @@ function readoutHtml() {
 
 function commandHtml() {
   return `<div class="command">
-    <div class="lead">✻ Tell <span class="mark">TaskPilot</span> what you need</div>
+    <div class="lead">✻ <span class="mark">TaskPilot</span> command bar</div>
     <p>Create tasks, plan your day, summarize work, or ask what needs attention — in plain language.</p>
     <div class="command-row">
       <input id="commandInput" placeholder='Try: &quot;Add a high priority task to prepare the investor deck tomorrow&quot;'>
@@ -662,56 +698,100 @@ function commandHtml() {
 
 function taskMetaHtml(t) {
   const pcls = { High: 'chip-high', Medium: 'chip-med', Low: 'chip-low' }[t.priority];
-  const due = t.dueDate ? `Due ${t.dueDate}` : 'No due date';
+  const due = friendlyDueDate(t.dueDate);
   return `<span class="chip ${pcls}">${t.priority}</span> <span class="chip chip-status">${esc(t.project)}</span> ${due} · ${t.estimate} min`;
 }
 
 function renderOverview() {
-  const shown = activeTasks().slice(0, 7);
-  const { summary, verdict, cls } = evidenceSummary(state.runs);
+  const shown = activeTasks().slice(0, 6);
+  const { verdict, cls } = evidenceSummary(state.runs);
+
   document.getElementById('main').innerHTML = `
+    <div class="hero">
+      <div class="panel-label"><span class="dot"></span>Workspace</div>
+      <div class="headline">Your work, under control.</div>
+      <div class="sub">Organize work, reduce friction, and measure whether AI actually helps.</div>
+    </div>
+
     ${readoutHtml()}
-    ${commandHtml()}
-    <div class="panel-label"><span class="dot"></span>Good to see you</div>
-    <div class="headline">Your work, under control.</div>
-    <div class="sub">A focused workspace that uses AI when it removes friction — and measures whether it actually did, instead of assuming it.</div>
+
+    <div class="command compact-command">
+      <div class="command-head">
+        <div>
+          <div class="lead">✻ <span class="mark">TaskPilot</span> command bar</div>
+          <p>Ask for a plan, summary or priorities — or create a task in plain language.</p>
+        </div>
+        <span class="command-badge">LOCAL + AI</span>
+      </div>
+
+      <div class="command-row">
+        <input id="commandInput" aria-label="TaskPilot command" placeholder='Try: “Plan my day”'>
+        <button class="btn btn-primary" data-action="run-command">Run</button>
+      </div>
+
+      <div class="quick-prompts" aria-label="Quick commands">
+        <button class="prompt-chip" data-action="quick-command" data-command="Plan my day">Plan my day</button>
+        <button class="prompt-chip" data-action="quick-command" data-command="What is urgent?">What is urgent?</button>
+        <button class="prompt-chip" data-action="quick-command" data-command="Summarize my work">Summarize</button>
+        <button class="prompt-chip" data-action="quick-command" data-command="Add a high priority task to rehearse the final demo tomorrow">Add task</button>
+      </div>
+
+      <div id="commandResult"></div>
+    </div>
+
+    <div class="section-head">
+      <div>
+        <div class="panel-label"><span class="dot"></span>Priority queue</div>
+        <div class="section-title">What needs attention</div>
+      </div>
+      <button class="text-link" data-action="nav" data-nav="mywork">Open My Work →</button>
+    </div>
+
     <div class="grid2">
       <div class="card">
-        <div class="card-title">Today</div>
-        <div class="card-note">Your most relevant work, ordered by urgency and priority.</div>
+        <div class="card-note">Overdue first, then due today and high-priority work.</div>
         ${shown.length ? shown.map(t => `
           <div class="task">
             <div class="task-name">${esc(t.title)}</div>
             <div class="task-meta">${taskMetaHtml(t)}</div>
           </div>`).join('') : `<div class="empty">Everything is complete. Add the next meaningful outcome above.</div>`}
       </div>
+
       <div class="next">
         <div class="tag">TASKPILOT INTELLIGENCE</div>
-        <h3>What should you do next?</h3>
+        <h3>Best next move</h3>
         <div class="body" id="nextAction">${localInsight()}</div>
       </div>
     </div>
-    <div class="grid2">
+
+    <div class="grid2 bottom-grid">
       <div class="ledger">
         <div class="ledger-title">Evidence snapshot</div>
-        <div class="card-note">Computed from your logged runs — not a claim, a calculation. The experiment is assistant-agnostic, so the AI-assisted side can be Copilot.</div>
+        <div class="card-note">Calculated from your AI Impact Lab runs.</div>
         <div class="verdict ${cls}">${verdict}</div>
       </div>
-      <div class="card">
-        <div class="card-title">Fast actions</div>
-        <div class="card-note">&nbsp;</div>
-        <div class="btn-row" style="margin-bottom:8px;">
+
+      <div class="card quick-actions">
+        <div class="card-title">Quick actions</div>
+        <div class="btn-row" style="margin-top:10px;">
           <button class="btn" style="flex:1" data-action="plan-day">Plan my day</button>
-          <button class="btn" style="flex:1" data-action="clean-backlog">Clean my backlog</button>
+          <button class="btn" style="flex:1" data-action="clean-backlog">Clean backlog</button>
         </div>
         <div id="fastActionResult"></div>
       </div>
     </div>
   `;
+
   if (state.settings.apiKey.trim()) {
-    aiChat('You are TaskPilot, an intelligent enterprise work assistant. Be concise, practical and specific. Never claim an action happened unless it actually did.',
-      `Analyze this work queue and give one best next-action recommendation. Mention the task, why it matters, and a practical next step. Keep it under 60 words.\nTasks: ${JSON.stringify(state.tasks)}`)
-      .then(({ text }) => { if (text) { const el = document.getElementById('nextAction'); if (el) el.textContent = text; } });
+    aiChat(
+      'You are TaskPilot, an intelligent enterprise work assistant. Be concise, practical and specific. Never claim an action happened unless it actually did.',
+      `Analyze this work queue and give one best next-action recommendation in under 40 words.\nTasks: ${JSON.stringify(state.tasks)}`
+    ).then(({ text }) => {
+      if (text) {
+        const el = document.getElementById('nextAction');
+        if (el) el.textContent = text;
+      }
+    });
   }
 }
 
@@ -786,7 +866,7 @@ function taskListHtml(list) {
             ${['Todo', 'In Progress', 'Done'].map(s => `<option value="${s}" ${s === t.status ? 'selected' : ''}>${s}</option>`).join('')}
           </select>
           <span class="small">Priority: <strong>${t.priority}</strong></span>
-          <span class="small">Due: ${t.dueDate || '—'}</span>
+          <span class="small">${friendlyDueDate(t.dueDate)}</span>
           <button class="btn btn-sm btn-danger" data-action="delete-task" data-task="${t.id}">Delete</button>
         </div>
       </div>
@@ -920,32 +1000,115 @@ function startLiveTimerTick() {
 }
 
 /* ============================== Actions ============================== */
+
+function localCommand(raw) {
+  const q = raw.trim().toLowerCase();
+  const active = activeTasks();
+  const overdue = overdueTasks();
+  const due = dueTodayTasks();
+  const high = highPriorityOpen();
+
+  if (/^(hi|hello|hey)\b/.test(q)) {
+    return `<strong>TaskPilot</strong>Ready. Try “plan my day”, “what is urgent?”, or “summarize my work”.`;
+  }
+
+  if (/(plan.*day|today.*plan|what should i do first|what.*do.*first)/.test(q)) {
+    const queue = [...overdue, ...due, ...high]
+      .filter((t, i, arr) => arr.findIndex(x => x.id === t.id) === i)
+      .slice(0, 4);
+    if (!queue.length) {
+      return `<strong>Plan for today</strong>Nothing urgent is open. Pick the next meaningful outcome or add a new task.`;
+    }
+    return `<strong>Plan for today</strong>1. ${esc(queue[0].title)}<br>2. ${esc(queue[1]?.title || 'Block focused time for your highest-priority work')}<br>3. ${esc(queue[2]?.title || 'Clear one small task to build momentum')}<br>4. ${esc(queue[3]?.title || 'Review what changed before wrapping up')}`;
+  }
+
+  if (/(what.*urgent|urgent|high priority|highest priority|what.*important)/.test(q)) {
+    if (overdue.length) {
+      return `<strong>Needs attention first</strong>${overdue.length} overdue task${overdue.length === 1 ? '' : 's'}. Start with <b>${esc(overdue[0].title)}</b>, then review the remaining high-priority work.`;
+    }
+    if (high.length) {
+      return `<strong>High priority</strong>Start with <b>${esc(high[0].title)}</b>${high.length > 1 ? `, followed by ${high.length - 1} other high-priority task${high.length === 2 ? '' : 's'}.` : '.'}`;
+    }
+    return `<strong>Nothing urgent</strong>No overdue or high-priority tasks are currently open.`;
+  }
+
+  if (/(summari[sz]e|status update|where.*stand|workload|my work)/.test(q)) {
+    return `<strong>Work summary</strong>${active.length} open task${active.length === 1 ? '' : 's'}, ${overdue.length} overdue, ${due.length} due today, and ${high.length} high priority.`;
+  }
+
+  if (/(overdue|late|past due)/.test(q)) {
+    if (!overdue.length) return `<strong>You're clear</strong>No tasks are overdue right now.`;
+    return `<strong>Overdue</strong>${overdue.map(t => esc(t.title)).join(' • ')}`;
+  }
+
+  if (/(due today|today)/.test(q)) {
+    if (!due.length) return `<strong>Due today</strong>Nothing is due today.`;
+    return `<strong>Due today</strong>${due.map(t => esc(t.title)).join(' • ')}`;
+  }
+
+  if (/(clean|backlog|declutter)/.test(q)) {
+    const low = active.filter(t => t.priority === 'Low');
+    return `<strong>Backlog suggestion</strong>${low.length ? `Review ${low.length} low-priority task${low.length === 1 ? '' : 's'} and reschedule or archive anything that no longer matters.` : 'Your backlog is already focused. Keep attention on overdue and high-priority work first.'}`;
+  }
+
+  return localInsight();
+}
+
 async function handleCommand(raw) {
   const resultEl = document.getElementById('commandResult');
-  if (!raw.trim()) return;
-  const wantsCreate = /(add task|create task|remind me|to-?do|add a task)/i.test(raw);
+  const text = raw.trim();
+  if (!text) return;
+
+  // Covers natural phrasing such as:
+  // "add a high priority task to prepare the deck tomorrow"
+  const wantsCreate = /(?:add|create).*task|remind me to|make.*to-?do/i.test(text);
+
   if (wantsCreate) {
-    const parsed = parseQuickAdd(raw);
+    const parsed = parseQuickAdd(text);
     if (parsed && parsed.title) {
-      const t = { id: uid('t'), title: parsed.title, description: 'Created from the TaskPilot command bar',
-        priority: parsed.priority, status: 'Todo', dueDate: parsed.dueDate, project: 'My Work', tags: parsed.tags,
-        estimate: 30, steps: [], createdAt: new Date().toISOString(), completedAt: null };
-      state.tasks.unshift(t); persistTasks();
+      const t = {
+        id: uid('t'),
+        title: parsed.title,
+        description: 'Created from the TaskPilot command bar',
+        priority: parsed.priority,
+        status: 'Todo',
+        dueDate: parsed.dueDate,
+        project: 'My Work',
+        tags: parsed.tags,
+        estimate: 30,
+        steps: [],
+        createdAt: new Date().toISOString(),
+        completedAt: null
+      };
+      state.tasks.unshift(t);
+      persistTasks();
       toast(`Task created: ${parsed.title}`, '✅');
       render();
       return;
     }
   }
+
   if (state.settings.apiKey.trim()) {
-    if (resultEl) resultEl.innerHTML = `<div class="insight">Thinking…</div>`;
-    const { text, err } = await aiChat(
+    if (resultEl) resultEl.innerHTML = `<div class="insight compact"><strong>TaskPilot</strong>Thinking…</div>`;
+    const { text: aiText, err } = await aiChat(
       'You are TaskPilot, an intelligent enterprise work assistant. Be concise, practical and specific. Never claim an action happened unless it actually did. Help with prioritization, planning, decomposition, risk detection and summaries.',
-      `User command: ${raw}\n\nCurrent tasks:\n${JSON.stringify(state.tasks)}\n\nRespond directly and helpfully.`
+      `User command: ${text}
+
+Current tasks:
+${JSON.stringify(state.tasks)}
+
+Respond directly and helpfully in under 80 words.`
     );
-    if (text) { if (resultEl) resultEl.innerHTML = `<div class="insight"><strong>TaskPilot</strong>${esc(text)}</div>`; return; }
-    if (err && err !== 'missing_key' && resultEl) resultEl.innerHTML = `<div class="insight" style="border-color:var(--red)">AI request failed (${esc(err)}). Falling back to local logic.</div>`;
+    if (aiText) {
+      if (resultEl) resultEl.innerHTML = `<div class="insight compact"><strong>TaskPilot</strong>${esc(aiText)}</div>`;
+      return;
+    }
+    if (err && err !== 'missing_key' && resultEl) {
+      resultEl.innerHTML = `<div class="insight compact" style="border-color:var(--red)"><strong>AI unavailable</strong>Using local TaskPilot logic instead.</div>`;
+    }
   }
-  if (resultEl) resultEl.innerHTML = `<div class="insight"><strong>TaskPilot</strong>${localInsight()}</div>`;
+
+  if (resultEl) resultEl.innerHTML = `<div class="insight compact">${localCommand(text)}</div>`;
 }
 
 const actions = {
@@ -963,21 +1126,31 @@ const actions = {
   'clear-runs-cancel'() { state.confirmClearRuns = false; renderSidebarNav(); },
   'clear-runs-confirm'() { state.runs = []; persistRuns(); state.confirmClearRuns = false; toast('Evidence log cleared', '🗑️'); renderSidebarNav(); if (state.nav === 'lab') renderLab(); },
   'run-command'() { const input = document.getElementById('commandInput'); handleCommand(input.value); input.value = ''; },
+  'quick-command'(el) {
+    const input = document.getElementById('commandInput');
+    if (!input) return;
+    input.value = el.dataset.command || '';
+    handleCommand(input.value);
+  },
   async 'plan-day'() {
     const el = document.getElementById('fastActionResult');
     if (state.settings.apiKey.trim()) {
-      el.innerHTML = `<div class="insight">Planning…</div>`;
+      el.innerHTML = `<div class="insight compact">Planning…</div>`;
       const { text } = await aiChat('You are TaskPilot.', `Create a concise 4-step plan for today from these tasks: ${JSON.stringify(state.tasks)}`);
-      el.innerHTML = `<div class="insight">${esc(text || localInsight())}</div>`;
-    } else el.innerHTML = `<div class="insight">${localInsight()}</div>`;
+      el.innerHTML = `<div class="insight compact">${esc(text || 'Use “Plan my day” in the command bar.')}</div>`;
+    } else {
+      el.innerHTML = `<div class="insight compact">${localCommand('Plan my day')}</div>`;
+    }
   },
   async 'clean-backlog'() {
     const el = document.getElementById('fastActionResult');
     if (state.settings.apiKey.trim()) {
-      el.innerHTML = `<div class="insight">Reviewing…</div>`;
+      el.innerHTML = `<div class="insight compact">Reviewing…</div>`;
       const { text } = await aiChat('You are TaskPilot.', `Review this backlog and tell me what to do next, delay or remove, with one line of reasoning each: ${JSON.stringify(state.tasks)}`);
-      el.innerHTML = `<div class="insight">${esc(text || 'Use the command bar to ask this directly.')}</div>`;
-    } else el.innerHTML = `<div class="insight">Use the command bar: “Review my backlog and tell me what should be done, delayed or removed.”</div>`;
+      el.innerHTML = `<div class="insight compact">${esc(text || 'Use “Clean backlog” in the command bar.')}</div>`;
+    } else {
+      el.innerHTML = `<div class="insight compact">${localCommand('Clean backlog')}</div>`;
+    }
   },
   'create-task'() {
     const title = document.getElementById('newTitle').value.trim();
