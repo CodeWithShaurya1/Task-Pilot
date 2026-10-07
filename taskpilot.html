@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TaskPilot — Intelligent Work OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#EEF1EC; --surface:#FFFFFF; --surface-2:#F6F7F3;
+    --ink:#16201C; --muted:#5B6960; --line:#D7DCD1; --line-2:#C7CEC1;
+    --signal:#1F6E5C; --signal-soft:#E4F0EB;
+    --baseline:#46586B; --baseline-soft:#E9EDF1;
+    --amber:#B8791A; --amber-soft:#FBF1DE;
+    --red:#B4402E; --red-soft:#FBEAE7;
+    --shadow:0 6px 20px rgba(22,32,28,.08);
+    --radius-s:12px; --radius-h:6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#121613; --surface:#1A1F1B; --surface-2:#1F2521;
+      --ink:#EAF0EC; --muted:#8FA79B; --line:#2B332D; --line-2:#3A443C;
+      --signal:#49CBA6; --signal-soft:#17302A;
+      --baseline:#8AA3BE; --baseline-soft:#1E2730;
+      --amber:#E3A94B; --amber-soft:#2E2618;
+      --red:#E88374; --red-soft:#301B18;
+      --shadow:0 6px 20px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#121613; --surface:#1A1F1B; --surface-2:#1F2521;
+    --ink:#EAF0EC; --muted:#8FA79B; --line:#2B332D; --line-2:#3A443C;
+    --signal:#49CBA6; --signal-soft:#17302A;
+    --baseline:#8AA3BE; --baseline-soft:#1E2730;
+    --amber:#E3A94B; --amber-soft:#2E2618;
+    --red:#E88374; --red-soft:#301B18;
+    --shadow:0 6px 20px rgba(0,0,0,.35);
+  }
+  * { box-sizing:border-box; }
+  html { scroll-padding-top:env(safe-area-inset-top,0px); }
+  html, body { height:100%; }
+  body {
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif; -webkit-font-smoothing:antialiased;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  h1,h2,h3 { font-family:'Space Grotesk', sans-serif; letter-spacing:-.01em; margin:0; }
+  button, input, select, textarea { font-family:inherit; color:inherit; }
+  button { cursor:pointer; }
+  ::selection { background:var(--signal-soft); }
+  a { color:var(--signal); }
+
+  #shell { display:flex; min-height:100%; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    width:250px; flex:none; background:var(--surface); border-right:1px solid var(--line);
+    padding:20px 16px; display:flex; flex-direction:column; gap:4px;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .brand { font-size:1.32rem; font-weight:700; padding:0 4px; }
+  .brand .mark { color:var(--signal); }
+  .brand-sub { color:var(--muted); font-size:.76rem; padding:0 4px 16px; }
+  .navlist { display:flex; flex-direction:column; gap:2px; margin-bottom:14px; }
+  .navitem {
+    text-align:left; background:none; border:none; border-radius:9px; padding:9px 10px;
+    font-weight:600; font-size:.92rem; color:var(--muted); display:flex; align-items:center; gap:9px;
+  }
+  .navitem:hover { background:var(--surface-2); color:var(--ink); }
+  .navitem.active { background:var(--signal-soft); color:var(--signal); }
+  .navitem .dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex:none; opacity:.7; }
+  .sidebar hr { border:none; border-top:1px solid var(--line); margin:10px 4px; }
+  .disclosure {
+    width:100%; background:none; border:none; text-align:left; padding:8px 4px;
+    font-weight:600; font-size:.8rem; color:var(--muted); display:flex; justify-content:space-between; align-items:center;
+  }
+  .disclosure:hover { color:var(--ink); }
+  .disclosure .chev { transition:transform .15s; font-size:.85rem; }
+  .disclosure.open .chev { transform:rotate(90deg); }
+  .panel { padding:6px 4px 10px; display:flex; flex-direction:column; gap:8px; }
+  .panel[hidden] { display:none; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  .field label { font-size:.74rem; font-weight:600; color:var(--muted); }
+  .field input, .field select, .field textarea {
+    border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:var(--surface);
+    font-size:.86rem; width:100%;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus, button:focus-visible {
+    outline:2px solid var(--signal); outline-offset:1px;
+  }
+  .hint { color:var(--muted); font-size:.72rem; line-height:1.5; margin:0; }
+  .ai-status { font-size:.76rem; color:var(--muted); padding:2px 4px 10px; }
+  .btn {
+    border:1px solid var(--line); background:var(--surface); border-radius:9px; padding:9px 12px;
+    font-weight:600; font-size:.86rem;
+  }
+  .btn:hover { border-color:var(--line-2); }
+  .btn-primary { background:var(--signal); border-color:var(--signal); color:#fff; }
+  .btn-primary:hover { filter:brightness(1.08); }
+  .btn-danger { background:var(--red); border-color:var(--red); color:#fff; }
+  .btn-block { width:100%; }
+  .btn-row { display:flex; gap:8px; }
+  .btn-sm { padding:6px 10px; font-size:.78rem; }
+
+  /* ---------- Main ---------- */
+  .main { flex:1; min-width:0; padding:22px clamp(16px,4vw,40px) 60px; max-width:1200px; margin:0 auto; width:100%; }
+  .panel-label { display:flex; align-items:center; gap:8px; color:var(--muted); font-weight:600; font-size:.86rem; margin-bottom:4px; }
+  .panel-label .dot { width:7px; height:7px; border-radius:50%; background:var(--signal); flex:none; }
+  .headline { font-size:clamp(1.7rem,3.6vw,2.15rem); font-weight:700; margin:2px 0 6px; }
+  .sub { color:var(--muted); max-width:64ch; line-height:1.55; margin-bottom:18px; }
+
+  .readout {
+    background:var(--ink); color:#EAF3EE; border-radius:var(--radius-h); padding:14px 20px;
+    display:flex; flex-wrap:wrap; gap:26px; align-items:center; margin-bottom:18px; border:1px solid #101613;
+  }
+  .readout .item { display:flex; flex-direction:column; gap:2px; }
+  .readout .item .n { font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1.28rem; }
+  .readout .item .l { font-size:.72rem; color:#9FB3A9; }
+  .readout .item.warn .n { color:#F0B45D; } .readout .item.alert .n { color:#F08872; } .readout .item.good .n { color:#7FE0BC; }
+  .readout .sep { width:1px; height:28px; background:#2A342F; }
+
+  .command {
+    background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--signal);
+    border-radius:var(--radius-h); padding:16px 20px; margin-bottom:18px;
+  }
+  .command .lead { font-family:'Space Grotesk'; font-weight:700; font-size:1.03rem; margin-bottom:2px; }
+  .command .lead .mark { color:var(--signal); }
+  .command p { margin:0 0 12px; color:var(--muted); font-size:.87rem; }
+  .command-row { display:flex; gap:10px; }
+  .command-row input { flex:1; border:1px solid var(--line); border-radius:9px; padding:10px 14px; background:var(--surface-2); font-size:.92rem; }
+  .command-row input:focus { outline:2px solid var(--signal); }
+
+  .grid2 { display:grid; grid-template-columns:1.7fr 1fr; gap:16px; align-items:start; }
+  @media (max-width:840px) { .grid2 { grid-template-columns:1fr; } }
+
+  .card {
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-s);
+    padding:18px; box-shadow:var(--shadow); margin-bottom:14px;
+  }
+  .card-title { font-family:'Space Grotesk'; font-weight:700; font-size:1.02rem; }
+  .card-note { color:var(--muted); font-size:.82rem; margin-top:2px; margin-bottom:12px; }
+
+  .task {
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:12px 14px; margin:8px 0; transition:border-color .15s, box-shadow .15s;
+  }
+  .task:hover { border-color:var(--line-2); box-shadow:0 4px 14px rgba(22,32,28,.07); }
+  .task-name { font-weight:600; }
+  .task-meta { color:var(--muted); font-size:.76rem; margin-top:4px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+
+  .chip { display:inline-block; padding:3px 9px; border-radius:99px; font-size:.68rem; font-weight:600; }
+  .chip-high { background:var(--red-soft); color:var(--red); }
+  .chip-med { background:var(--amber-soft); color:var(--amber); }
+  .chip-low { background:var(--signal-soft); color:var(--signal); }
+  .chip-status { background:var(--surface-2); color:var(--muted); border:1px solid var(--line); }
+
+  .insight { background:var(--signal-soft); border:1px solid var(--line); border-radius:12px; padding:14px 15px; line-height:1.55; }
+  .insight strong { display:block; margin-bottom:4px; }
+
+  .next { background:var(--ink); color:#EAF3EE; border-radius:var(--radius-s); padding:20px; }
+  .next .tag { font-size:.72rem; color:#9FB3A9; font-weight:600; }
+  .next h3 { margin:4px 0 10px; font-size:1.12rem; }
+  .next .body { line-height:1.55; }
+
+  .ledger { background:var(--surface); border:1px solid var(--line-2); border-top:3px solid var(--ink); border-radius:var(--radius-h); padding:18px 20px; margin-bottom:16px; }
+  .ledger-title { font-family:'Space Grotesk'; font-weight:700; font-size:1rem; }
+  .verdict { border-radius:var(--radius-h); padding:14px 16px; font-size:.92rem; line-height:1.55; margin:10px 0 4px; }
+  .verdict.pos { background:var(--signal-soft); border:1px solid var(--line); }
+  .verdict.neg { background:var(--red-soft); border:1px solid var(--line); }
+  .verdict.flat { background:var(--surface-2); border:1px solid var(--line); }
+  .verdict.none { background:var(--surface-2); border:1px dashed var(--line-2); color:var(--muted); }
+  .mono { font-family:'IBM Plex Mono', monospace; }
+
+  .metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:12px 0 4px; }
+  @media (max-width:640px) { .metrics { grid-template-columns:1fr; } }
+  .metric { border:1px solid var(--line); border-radius:10px; padding:12px 14px; background:var(--surface-2); }
+  .metric .l { font-size:.72rem; color:var(--muted); font-weight:600; }
+  .metric .v { font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1.3rem; margin-top:2px; }
+  .metric .d { font-size:.74rem; margin-top:2px; }
+  .metric .d.up { color:var(--red); } .metric .d.down { color:var(--signal); }
+
+  .bars { display:flex; gap:22px; align-items:flex-end; height:120px; margin:14px 0 6px; padding:0 4px; }
+  .bar-group { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
+  .bar-track { width:100%; max-width:64px; height:90px; display:flex; align-items:flex-end; }
+  .bar { width:100%; border-radius:4px 4px 0 0; transition:height .4s ease; }
+  .bar-label { font-size:.7rem; color:var(--muted); text-align:center; }
+
+  table.datatable { width:100%; border-collapse:collapse; font-size:.82rem; }
+  table.datatable th, table.datatable td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); }
+  table.datatable th { color:var(--muted); font-weight:600; font-size:.72rem; text-transform:none; }
+  .table-wrap { overflow-x:auto; }
+
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:14px; flex-wrap:wrap; }
+  .tab {
+    background:none; border:none; padding:9px 14px; font-weight:600; color:var(--muted); font-size:.9rem;
+    border-bottom:2px solid transparent; margin-bottom:-1px;
+  }
+  .tab.active { color:var(--signal); border-bottom-color:var(--signal); }
+
+  .progress-track { background:var(--surface-2); border:1px solid var(--line); border-radius:99px; height:8px; overflow:hidden; margin:8px 0; }
+  .progress-fill { background:var(--signal); height:100%; transition:width .3s ease; }
+  .step-row { display:flex; align-items:center; gap:8px; padding:3px 0; font-size:.86rem; }
+  .step-row input { accent-color:var(--signal); }
+  .step-row.done span { text-decoration:line-through; color:var(--muted); }
+
+  .empty { color:var(--muted); font-size:.86rem; padding:8px 2px; }
+  .small { color:var(--muted); font-size:.75rem; }
+
+  .toast-wrap { position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom,0px)); display:flex; flex-direction:column; gap:8px; z-index:50; }
+  .toast {
+    background:var(--ink); color:#EAF3EE; padding:10px 16px; border-radius:9px; font-size:.86rem;
+    box-shadow:0 8px 24px rgba(0,0,0,.25); animation:toastin .18s ease;
+  }
+  @keyframes toastin { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+
+  .modal-backdrop {
+    position:fixed; inset:0; background:rgba(10,14,11,.45); display:flex; align-items:flex-start;
+    justify-content:center; padding:6vh 16px; z-index:40; overflow-y:auto;
+  }
+  .modal { background:var(--surface); border-radius:var(--radius-s); padding:22px; width:100%; max-width:520px; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+  .modal h3 { margin-bottom:14px; }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .form-grid { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+
+  @media (max-width:840px) {
+    .sidebar { position:fixed; z-index:30; transform:translateX(-100%); transition:transform .2s; box-shadow:0 0 40px rgba(0,0,0,.15); }
+    .sidebar.open { transform:none; }
+    .mobile-topbar { display:flex; }
+    .main { padding-top:70px; }
+  }
+  .mobile-topbar {
+    display:none; position:fixed; top:0; left:0; right:0; z-index:20; background:var(--surface);
+    border-bottom:1px solid var(--line); padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top,0px));
+    align-items:center; gap:10px;
+  }
+  .mobile-topbar button { background:none; border:1px solid var(--line); border-radius:8px; padding:6px 10px; }
+
+/* TASKPILOT PRESENTATION POLISH */
+:root{
+--bg:#07110F;--surface:#0D1916;--surface-2:#111F1B;--ink:#ECF7F2;
+--muted:#91AAA0;--line:#21352E;--line-2:#315047;--signal:#42D6A4;
+--signal-soft:rgba(66,214,164,.11);--baseline:#91A9C7;
+--baseline-soft:rgba(145,169,199,.12);--amber:#F3B95F;
+--amber-soft:rgba(243,185,95,.12);--red:#FF7D6C;
+--red-soft:rgba(255,125,108,.12);--shadow:0 18px 55px rgba(0,0,0,.28);
+--radius-s:16px;--radius-h:12px;
+}
+html{background:var(--bg)}
+body{
+background:radial-gradient(circle at 82% 8%,rgba(66,214,164,.10),transparent 28%),
+radial-gradient(circle at 18% 90%,rgba(71,120,255,.06),transparent 24%),var(--bg);
+color:var(--ink);
+}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);
+background-size:36px 36px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.75),transparent 90%)}
+.sidebar{width:258px;background:rgba(9,20,17,.88);border-right:1px solid rgba(116,164,148,.16);
+backdrop-filter:blur(18px);box-shadow:14px 0 45px rgba(0,0,0,.16)}
+.brand{font-size:1.42rem;letter-spacing:-.035em}
+.brand .mark{color:var(--signal);text-shadow:0 0 22px rgba(66,214,164,.35)}
+.brand-sub{color:#6F8D81;letter-spacing:.08em;text-transform:uppercase;font-size:.66rem;font-weight:700}
+.navlist{gap:5px}
+.navitem{border:1px solid transparent;padding:11px 12px;border-radius:11px;transition:all .18s ease}
+.navitem:hover{background:rgba(255,255,255,.035);border-color:var(--line);transform:translateX(2px)}
+.navitem.active{background:linear-gradient(90deg,rgba(66,214,164,.15),rgba(66,214,164,.045));
+border-color:rgba(66,214,164,.20);box-shadow:inset 3px 0 0 var(--signal),0 7px 22px rgba(66,214,164,.06)}
+.navitem .dot{width:7px;height:7px;box-shadow:0 0 10px currentColor}
+.main{max-width:1280px;padding:28px clamp(18px,4vw,48px) 70px}
+.panel-label{text-transform:uppercase;letter-spacing:.11em;font-size:.72rem;color:#718D82}
+.panel-label .dot{width:8px;height:8px;box-shadow:0 0 14px var(--signal)}
+.headline{font-size:clamp(2rem,4vw,2.8rem);letter-spacing:-.045em;line-height:1.05;text-shadow:0 8px 35px rgba(0,0,0,.18)}
+.sub{color:#91AAA0;font-size:.94rem;max-width:72ch}
+.readout{background:linear-gradient(135deg,#101F1A,#091411);border:1px solid rgba(96,153,133,.22);
+border-radius:16px;padding:15px 20px;box-shadow:0 16px 45px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.035);
+position:relative;overflow:hidden}
+.readout::after{content:"";position:absolute;width:180px;height:180px;right:-70px;top:-100px;
+background:rgba(66,214,164,.10);filter:blur(35px);border-radius:50%}
+.readout .item{color:#ECF7F2!important;position:relative;z-index:1}
+.readout .item .n{font-size:1.42rem}.readout .item .l{color:#7F9A90}
+.readout .item.good .n{color:var(--signal);text-shadow:0 0 18px rgba(66,214,164,.25)}
+.readout .item.warn .n{color:var(--amber)}.readout .item.alert .n{color:var(--red)}
+.command{background:linear-gradient(135deg,rgba(17,31,27,.96),rgba(11,23,19,.96));
+border:1px solid rgba(66,214,164,.20);border-left:4px solid var(--signal);border-radius:16px;
+padding:19px 21px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.command::before{content:"AI WORKSPACE";position:absolute;top:14px;right:18px;font:700 .58rem 'IBM Plex Mono',monospace;
+letter-spacing:.13em;color:#4E6F62}
+.command .lead{font-size:1.08rem}
+.command-row input,.field input,.field select,.field textarea{background:#0A1512;border-color:#274039;color:var(--ink);border-radius:11px}
+.command-row input::placeholder,.field input::placeholder,.field textarea::placeholder{color:#5F776D}
+.btn{border-color:#29443A;background:linear-gradient(180deg,#15251F,#101D19);border-radius:10px;
+transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,filter .16s ease}
+.btn:hover{border-color:#3C6557;transform:translateY(-1px);box-shadow:0 8px 22px rgba(0,0,0,.22)}
+.btn-primary{background:linear-gradient(135deg,#3DD09E,#239F79);border-color:#42D6A4;
+box-shadow:0 7px 24px rgba(66,214,164,.16);font-weight:700}
+.btn-primary:hover{filter:brightness(1.08);box-shadow:0 10px 28px rgba(66,214,164,.22)}
+.card,.ledger{background:linear-gradient(145deg,rgba(15,28,24,.96),rgba(11,22,19,.96));
+border-color:rgba(90,132,119,.18);box-shadow:var(--shadow);border-radius:16px}
+.card{transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.card:hover{transform:translateY(-2px);border-color:rgba(66,214,164,.22);box-shadow:0 20px 52px rgba(0,0,0,.30)}
+.task{background:rgba(255,255,255,.018);border-color:#21372F;border-radius:13px}
+.task:hover{border-color:#35564A;box-shadow:0 8px 24px rgba(0,0,0,.22);transform:translateY(-1px)}
+.next{background:radial-gradient(circle at 90% 10%,rgba(66,214,164,.13),transparent 35%),
+linear-gradient(145deg,#12241E,#0B1713);border:1px solid rgba(66,214,164,.18);box-shadow:var(--shadow)}
+.next .tag{color:#61B697;letter-spacing:.1em}
+.ledger{border-top:3px solid var(--signal)}
+.verdict{border-radius:13px}
+.verdict.pos{background:linear-gradient(135deg,rgba(66,214,164,.12),rgba(66,214,164,.045));border-color:rgba(66,214,164,.24)}
+.verdict.neg{background:linear-gradient(135deg,rgba(255,125,108,.12),rgba(255,125,108,.045));border-color:rgba(255,125,108,.24)}
+.verdict.flat{background:rgba(255,255,255,.025)}
+.metric{background:rgba(255,255,255,.025);border-color:#274238;border-radius:13px}
+.metric .v{font-size:1.5rem}
+.tabs{border-bottom-color:#263C34}.tab{padding:10px 15px}
+.tab.active{color:var(--signal);text-shadow:0 0 16px rgba(66,214,164,.18)}
+.progress-track{background:#0A1512;border-color:#274238}
+.progress-fill{background:linear-gradient(90deg,#2FBF91,#62E2B6);box-shadow:0 0 14px rgba(66,214,164,.20)}
+.insight{background:rgba(66,214,164,.075);border-color:rgba(66,214,164,.18)}
+.bars{background:rgba(255,255,255,.018);border:1px solid #20362E;border-radius:14px;padding:14px 18px 7px;height:145px}
+.bar{box-shadow:0 0 18px rgba(66,214,164,.12)}
+table.datatable th{color:#769388}table.datatable td{color:#C4D4CD;border-bottom-color:#20352E}
+.modal-backdrop{background:rgba(1,7,5,.72);backdrop-filter:blur(7px)}
+.modal{background:#0D1A16;border:1px solid #29443A;box-shadow:0 30px 90px rgba(0,0,0,.55)}
+.toast{background:linear-gradient(135deg,#173128,#0D1E18);border:1px solid rgba(66,214,164,.25);box-shadow:0 14px 35px rgba(0,0,0,.35)}
+input[type="checkbox"]{accent-color:var(--signal)}select{color-scheme:dark}
+::selection{background:rgba(66,214,164,.25);color:#fff}
+@media(max-width:840px){.sidebar{background:rgba(8,18,15,.97);backdrop-filter:blur(18px)}
+.mobile-topbar{background:rgba(9,20,17,.90);border-bottom-color:rgba(116,164,148,.18);backdrop-filter:blur(18px)}}
+@media(prefers-reduced-motion:no-preference){
+.headline{animation:heroIn .45s ease both}.readout{animation:heroIn .4s ease both}.command{animation:heroIn .5s .04s ease both}
+@keyframes heroIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+}
+
+
+.challenge-strip{
+  display:flex;justify-content:space-between;gap:18px;align-items:center;
+  margin:0 0 16px;padding:14px 16px;border:1px solid rgba(66,214,164,.20);
+  border-radius:14px;background:linear-gradient(135deg,rgba(66,214,164,.075),rgba(255,255,255,.018));
+}
+.challenge-kicker{
+  font:700 .62rem 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#64C9A5;
+  margin-bottom:4px;
+}
+.challenge-title{font-family:'Space Grotesk';font-weight:700;font-size:.96rem}
+.protocol{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.protocol span{
+  padding:7px 9px;border:1px solid #29443A;border-radius:9px;background:rgba(0,0,0,.12);
+  color:#9FB5AC;font-size:.70rem;white-space:nowrap;
+}
+.protocol b{color:#42D6A4}
+@media(max-width:840px){
+  .challenge-strip{flex-direction:column;align-items:flex-start}
+  .protocol{justify-content:flex-start}
+}
+
+</style>
+</head>
+<body>
+
+<div class="mobile-topbar">
+  <button data-action="toggle-sidebar" aria-label="Menu">☰</button>
+  <div class="brand" style="font-size:1.05rem;">Task<span class="mark">Pilot</span></div>
+</div>
+
+<div id="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">Task<span class="mark">Pilot</span></div>
+    <div class="brand-sub">Intelligent Work OS</div>
+    <nav class="navlist" id="navlist"></nav>
+    <hr>
+    <button class="disclosure" data-action="toggle-panel" data-panel="ai">AI assistant <span class="chev">›</span></button>
+    <div class="panel" id="panel-ai" hidden>
+      <div class="field">
+        <label for="modelInput">Model</label>
+        <input id="modelInput" placeholder="gpt-4o-mini">
+      </div>
+      <div class="field">
+        <label for="keyInput">Live AI API key <span class="small">(optional)</span></label>
+        <input id="keyInput" type="password" placeholder="Optional — for live AI">
+      </div>
+      <p class="hint">The live AI connection is optional and powers the in-app assistant. For the Microsoft challenge, the <strong>Impact Lab is assistant-agnostic</strong>: you can log a real Copilot-assisted run and a No-AI run without an API key.</p>
+    </div>
+    <div class="ai-status" id="aiStatus">⚪ Local logic active · experiment can run without an API key</div>
+    <hr>
+    <button class="disclosure" data-action="toggle-panel" data-panel="data">Data <span class="chev">›</span></button>
+    <div class="panel" id="panel-data" hidden>
+      <span class="small">My Work · Personal · stored in this browser</span>
+      <button class="btn btn-block" data-action="reset-tasks">Reset demo tasks</button>
+      <div id="clearRunsArea"></div>
+    </div>
+  </aside>
+
+  <main class="main" id="main"></main>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+<div id="modalRoot"></div>
+
+<script>
+'use strict';
+
+/* ============================== Storage ============================== */
+const LS = {
+  tasks: 'taskpilot_tasks_v1',
+  runs: 'taskpilot_runs_v1',
+  settings: 'taskpilot_settings_v1',
+  seeded: 'taskpilot_seeded_v2',
+};
+function load(key, fallback) {
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+  catch (e) { return fallback; }
+}
+function save(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage unavailable — app still works this session */ }
+}
+
+/* ============================== State ============================== */
+const state = {
+  nav: 'overview',
+  tasks: load(LS.tasks, []),
+  runs: load(LS.runs, []),
+  settings: load(LS.settings, { apiKey: '', model: 'gpt-4o-mini' }),
+  search: '',
+  tab: 'all',
+  timer: { running: false, startTs: null, taskName: 'Build a task form', mode: 'AI-assisted' },
+  logSeconds: 300,
+  panels: { ai: false, data: false },
+  confirmClearRuns: false,
+  sidebarOpen: false,
+};
+
+function uid(prefix) { return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function localDateStr(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function todayStr() { return localDateStr(); }
+function addDays(n) { const d = new Date(); d.setDate(d.getDate() + n); return localDateStr(d); }
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+/* ============================== Seed data ============================== */
+function seedTasks() {
+  const demo = [
+    ['Confirm the final demo flow with the team', 'Close the last open feedback items and make sure everyone knows exactly when to hand over during the live demo.', 'High', addDays(-1), 'Hackathon', 'demo,team', 25],
+    ['Fix the mobile spacing on the task cards', 'Check the phone layout once more so nothing feels cramped when we show the responsive view.', 'High', addDays(0), 'TaskPilot', 'frontend,polish', 30],
+    ['Review the AI Impact Lab numbers', 'Make sure the AI and No-AI runs are comparable and that the scorecard tells the same story as the raw log.', 'Medium', addDays(0), 'TaskPilot', 'testing,metrics', 35],
+    ['Send the team our final talking points', 'Share the opening, demo handoffs and the three judge questions we expect to get asked.', 'Medium', addDays(1), 'Hackathon', 'team,communication', 20],
+    ['Clean up the old backlog', 'Archive tasks we are no longer using and keep only the work that matters for the next demo.', 'Low', addDays(3), 'Planning', 'backlog,cleanup', 25],
+    ['Rehearse the 60-second opening', 'Practice the first minute until the problem, product and reason to care all land naturally.', 'Medium', addDays(1), 'Presentation', 'pitch,rehearsal', 20],
+  ];
+  return demo.map(([title, description, priority, dueDate, project, tags, estimate]) => ({
+    id: uid('t'), title, description, priority, status: 'Todo', dueDate, project, tags, estimate,
+    steps: [], createdAt: new Date().toISOString(), completedAt: null,
+  }));
+}
+if (!load(LS.seeded, false)) {
+  state.tasks = seedTasks();
+  save(LS.tasks, state.tasks);
+  save(LS.seeded, true);
+}
+
+/* ============================== Persistence helpers ============================== */
+function persistTasks() { save(LS.tasks, state.tasks); }
+function persistRuns() { save(LS.runs, state.runs); }
+function persistSettings() { save(LS.settings, state.settings); }
+
+/* ============================== Toasts ============================== */
+function toast(msg, icon) {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = (icon ? icon + ' ' : '') + msg;
+  wrap.appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .25s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 250); }, 2600);
+}
+
+/* ============================== Domain logic ============================== */
+function activeTasks() { return state.tasks.filter(t => t.status !== 'Done'); }
+function overdueTasks() { return activeTasks().filter(t => t.dueDate && t.dueDate < todayStr()); }
+function dueTodayTasks() { return activeTasks().filter(t => t.dueDate === todayStr()); }
+function highPriorityOpen() { return activeTasks().filter(t => t.priority === 'High'); }
+
+function localInsight() {
+  const active = activeTasks();
+  if (active.length === 0) return 'Your workspace is clear. Add the next meaningful outcome.';
+  const overdue = overdueTasks();
+  if (overdue.length) return `<strong>${overdue.length} task(s) are overdue.</strong> Resolve or reschedule them before starting new work.`;
+  const urgent = highPriorityOpen();
+  if (urgent.length) return `<strong>Focus next:</strong> ${esc(urgent[0].title)} — it is marked High priority and estimated at ${urgent[0].estimate} min.`;
+  return `<strong>Focus next:</strong> ${esc(active[0].title)} — your next actionable item.`;
+}
+
+function fallbackSteps(title, description) {
+  const low = `${title} ${description}`.toLowerCase();
+  if (/(auth|login|security|password)/.test(low))
+    return ['Define requirements and edge cases', 'Implement the core flow', 'Add validation and error states', 'Review against misuse cases', 'Ship and monitor'];
+  if (/(deck|presentation|pitch|investor)/.test(low))
+    return ['Outline the key messages', 'Draft slides and narrative', 'Add data or visuals that support the claims', 'Rehearse and time the delivery', 'Collect feedback and refine'];
+  if (/(dashboard|analytics|report)/.test(low))
+    return ['List the questions the data should answer', 'Build the core views', 'Check accuracy against the source data', 'Review edge cases and empty states', 'Share and gather feedback'];
+  return ['Clarify the goal and what done looks like', 'Draft a first version', 'Review it against the goal', "Fix what's missing or wrong", 'Finalize and share'];
+}
+
+function parseQuickAdd(raw) {
+  raw = raw.trim();
+  if (!raw) return null;
+  const low = raw.toLowerCase();
+  let priority = 'Medium';
+  if (/urgent|high priority|asap/.test(low)) priority = 'High';
+  else if (/low priority/.test(low)) priority = 'Low';
+  let dueDate = null;
+  if (/\btoday\b/.test(low)) dueDate = todayStr();
+  else if (/\btomorrow\b/.test(low)) dueDate = addDays(1);
+  let clean = raw
+    .replace(/^(add|create)(\s+a)?\s+(task\s+to\s+)?/i, '')
+    .replace(/^remind me to\s+/i, '');
+  const tagMatches = [...clean.matchAll(/#([A-Za-z0-9_-]+)/g)].map(m => m[1]);
+  clean = clean
+    .replace(/#[A-Za-z0-9_-]+/g, '')
+    .replace(/\b(today|tomorrow|urgent|high priority|low priority|asap)\b/gi, '')
+    .replace(/\s*,\s*/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .replace(/^[-,\s]+|[-,\s]+$/g, '');
+  return { title: clean, priority, dueDate, tags: tagMatches.join(',') };
+}
+
+function evidenceSummary(runs) {
+  if (runs.length === 0) return { summary: null, verdict: 'No runs logged yet. Log a comparable No-AI run and a real Copilot / AI-assisted run in the AI Impact Lab to see a verdict here.', cls: 'none' };
+  const byMode = {};
+  for (const r of runs) {
+    (byMode[r.mode] ||= []).push(r);
+  }
+  const summary = Object.entries(byMode).map(([mode, rows]) => {
+    const n = rows.length;
+    const avgTime = rows.reduce((a, r) => a + r.seconds, 0) / n;
+    const avgDefects = rows.reduce((a, r) => a + r.defects, 0) / n;
+    const avgRework = rows.reduce((a, r) => a + r.rework, 0) / n;
+    return { mode, runs: n, avgTime, avgDefects, avgRework, effectiveMin: avgTime / 60 + avgRework };
+  });
+  const ai = summary.find(s => s.mode === 'AI-assisted');
+  const base = summary.find(s => s.mode === 'No-AI');
+  if (!ai || !base) return { summary, verdict: 'Log at least one <strong>Copilot / AI-assisted</strong> and one <strong>No-AI</strong> run on comparable work to compute a verdict.', cls: 'none' };
+  const note = (ai.runs < 3 || base.runs < 3) ? ` (only ${ai.runs} AI-assisted / ${base.runs} No-AI runs so far — log more for a reliable read)` : '';
+  const deltaPct = base.effectiveMin ? (base.effectiveMin - ai.effectiveMin) / base.effectiveMin * 100 : 0;
+  const defectDelta = ai.avgDefects - base.avgDefects;
+  let verdict, cls;
+  if (Math.abs(deltaPct) < 3) {
+    verdict = `AI-assisted and manual runs land within <strong>${Math.abs(deltaPct).toFixed(0)}%</strong> of each other on effective time (time + rework)${note}. On this evidence, AI isn't moving the needle either way yet.`;
+    cls = 'flat';
+  } else if (deltaPct > 0) {
+    let q = 'Defect rates were about the same either way.';
+    if (defectDelta < -0.05) q = `Average defects were also <strong>${Math.abs(defectDelta).toFixed(1)} lower</strong> with AI.`;
+    else if (defectDelta > 0.05) q = `Average defects were <strong>${defectDelta.toFixed(1)} higher</strong> with AI — the speed gain came with a quality cost worth watching.`;
+    verdict = `AI-assisted work finished <strong>${deltaPct.toFixed(0)}% faster</strong> on effective time (time + rework)${note}. ${q}`;
+    cls = 'pos';
+  } else {
+    verdict = `Manual runs were <strong>${Math.abs(deltaPct).toFixed(0)}% faster</strong> on effective time than AI-assisted ones${note}. On this task, the AI overhead (prompting, checking output) outweighed the time it saved.`;
+    cls = 'neg';
+  }
+  return { summary, verdict, cls, ai, base };
+}
+
+/* ============================== AI (optional, needs a key) ============================== */
+async function aiChat(systemPrompt, userPrompt) {
+  const key = state.settings.apiKey.trim();
+  if (!key) return { text: null, err: 'missing_key' };
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({
+        model: state.settings.model || 'gpt-4o-mini',
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+        temperature: 0.4,
+      }),
+    });
+    if (!res.ok) { const t = await res.text(); return { text: null, err: `HTTP ${res.status}: ${t.slice(0, 200)}` }; }
+    const data = await res.json();
+    return { text: data.choices?.[0]?.message?.content ?? null, err: null };
+  } catch (e) {
+    return { text: null, err: (e && e.message) || 'network error (this can happen if the page is running inside a sandboxed preview — try opening the file directly in your browser)' };
+  }
+}
+function extractJsonArray(text) {
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  try { const v = JSON.parse(cleaned); return Array.isArray(v) ? v : null; } catch (e) {}
+  const m = cleaned.match(/\[[\s\S]*\]/);
+  if (m) { try { const v = JSON.parse(m[0]); return Array.isArray(v) ? v : null; } catch (e) {} }
+  return null;
+}
+
+async function decomposeTask(task) {
+  if (state.settings.apiKey.trim()) {
+    const { text, err } = await aiChat(
+      'Output ONLY a JSON array of 3 to 6 short imperative task steps (plain strings). No prose, no markdown fences, no keys.',
+      `Task: ${task.title}\nDetails: ${task.description || 'none'}\nBreak this into a short ordered checklist.`
+    );
+    if (text) { const arr = extractJsonArray(text); if (arr && arr.length) return { steps: arr.slice(0, 6).map(String), source: 'ai' }; }
+  }
+  return { steps: fallbackSteps(task.title, task.description), source: 'local' };
+}
+
+/* ============================== Rendering ============================== */
+const NAV_ITEMS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'mywork', label: 'My Work' },
+  { id: 'lab', label: 'AI Impact Lab' },
+];
+
+function renderSidebarNav() {
+  document.getElementById('navlist').innerHTML = NAV_ITEMS.map(n =>
+    `<button class="navitem ${state.nav === n.id ? 'active' : ''}" data-action="nav" data-nav="${n.id}"><span class="dot"></span>${n.label}</button>`
+  ).join('');
+  document.getElementById('aiStatus').textContent = state.settings.apiKey.trim()
+    ? '🟢 Live AI connected' : '⚪ Running on local logic — no API key set';
+  document.getElementById('modelInput').value = state.settings.model;
+  document.getElementById('keyInput').value = state.settings.apiKey;
+
+  const dataArea = document.getElementById('clearRunsArea');
+  if (state.confirmClearRuns) {
+    dataArea.innerHTML = `
+      <p class="hint" style="color:var(--red)">This deletes every logged AI Impact Lab run. This can't be undone.</p>
+      <div class="btn-row">
+        <button class="btn btn-danger btn-sm" style="flex:1" data-action="clear-runs-confirm">Yes, clear it</button>
+        <button class="btn btn-sm" style="flex:1" data-action="clear-runs-cancel">Cancel</button>
+      </div>`;
+  } else {
+    dataArea.innerHTML = `<button class="btn btn-block" data-action="clear-runs-ask">Clear evidence log</button>`;
+  }
+}
+
+function readoutHtml() {
+  const overdue = overdueTasks().length, due = dueTodayTasks().length, open = activeTasks().length,
+        high = highPriorityOpen().length, runs = state.runs.length;
+  return `<div class="readout">
+    <div class="item ${overdue ? 'alert' : 'good'}"><div class="n" color="yellow">${overdue}</div><div class="l">Overdue</div></div>
+    <div class="sep"></div>
+    <div class="item ${due ? 'warn' : ''}"><div class="n">${due}</div><div class="l">Due today</div></div>
+    <div class="sep"></div>
+    <div class="item"><div class="n">${open}</div><div class="l">Open tasks</div></div>
+    <div class="sep"></div>
+    <div class="item alert"><div class="n">${high}</div><div class="l">High priority</div></div>
+    <div class="sep"></div>
+    <div class="item good"><div class="n">${runs}</div><div class="l">Evidence runs logged</div></div>
+  </div>`;
+}
+
+function commandHtml() {
+  return `<div class="command">
+    <div class="lead">✻ Tell <span class="mark">TaskPilot</span> what you need</div>
+    <p>Create tasks, plan your day, summarize work, or ask what needs attention — in plain language.</p>
+    <div class="command-row">
+      <input id="commandInput" placeholder='Try: &quot;Add a high priority task to prepare the investor deck tomorrow&quot;'>
+      <button class="btn btn-primary" data-action="run-command">Run</button>
+    </div>
+    <div id="commandResult"></div>
+  </div>`;
+}
+
+function taskMetaHtml(t) {
+  const pcls = { High: 'chip-high', Medium: 'chip-med', Low: 'chip-low' }[t.priority];
+  const due = t.dueDate ? `Due ${t.dueDate}` : 'No due date';
+  return `<span class="chip ${pcls}">${t.priority}</span> <span class="chip chip-status">${esc(t.project)}</span> ${due} · ${t.estimate} min`;
+}
+
+function renderOverview() {
+  const shown = activeTasks().slice(0, 7);
+  const { summary, verdict, cls } = evidenceSummary(state.runs);
+  document.getElementById('main').innerHTML = `
+    ${readoutHtml()}
+    ${commandHtml()}
+    <div class="panel-label"><span class="dot"></span>Good to see you</div>
+    <div class="headline">Your work, under control.</div>
+    <div class="sub">A focused workspace that uses AI when it removes friction — and measures whether it actually did, instead of assuming it.</div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">Today</div>
+        <div class="card-note">Your most relevant work, ordered by urgency and priority.</div>
+        ${shown.length ? shown.map(t => `
+          <div class="task">
+            <div class="task-name">${esc(t.title)}</div>
+            <div class="task-meta">${taskMetaHtml(t)}</div>
+          </div>`).join('') : `<div class="empty">Everything is complete. Add the next meaningful outcome above.</div>`}
+      </div>
+      <div class="next">
+        <div class="tag">TASKPILOT INTELLIGENCE</div>
+        <h3>What should you do next?</h3>
+        <div class="body" id="nextAction">${localInsight()}</div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="ledger">
+        <div class="ledger-title">Evidence snapshot</div>
+        <div class="card-note">Computed from your logged runs — not a claim, a calculation. The experiment is assistant-agnostic, so the AI-assisted side can be Copilot.</div>
+        <div class="verdict ${cls}">${verdict}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Fast actions</div>
+        <div class="card-note">&nbsp;</div>
+        <div class="btn-row" style="margin-bottom:8px;">
+          <button class="btn" style="flex:1" data-action="plan-day">Plan my day</button>
+          <button class="btn" style="flex:1" data-action="clean-backlog">Clean my backlog</button>
+        </div>
+        <div id="fastActionResult"></div>
+      </div>
+    </div>
+  `;
+  if (state.settings.apiKey.trim()) {
+    aiChat('You are TaskPilot, an intelligent enterprise work assistant. Be concise, practical and specific. Never claim an action happened unless it actually did.',
+      `Analyze this work queue and give one best next-action recommendation. Mention the task, why it matters, and a practical next step. Keep it under 60 words.\nTasks: ${JSON.stringify(state.tasks)}`)
+      .then(({ text }) => { if (text) { const el = document.getElementById('nextAction'); if (el) el.textContent = text; } });
+  }
+}
+
+function renderMyWork() {
+  const q = state.search.toLowerCase();
+  const filtered = state.tasks.filter(t => `${t.title} ${t.description} ${t.project} ${t.tags}`.toLowerCase().includes(q));
+  const groups = { all: filtered, todo: filtered.filter(t => t.status === 'Todo'), inprog: filtered.filter(t => t.status === 'In Progress'), done: filtered.filter(t => t.status === 'Done') };
+  const tabs = [['all', 'All'], ['todo', 'To do'], ['inprog', 'In progress'], ['done', 'Done']];
+
+  document.getElementById('main').innerHTML = `
+    ${commandHtml()}
+    <div class="panel-label"><span class="dot"></span>Workspace</div>
+    <div class="headline">My Work</div>
+    <div class="sub">Simple enough for everyone. Structured enough for real teams.</div>
+    <div class="card">
+      <button class="disclosure" data-action="toggle-panel" data-panel="addtask">＋ Add task manually <span class="chev">›</span></button>
+      <div class="panel" id="panel-addtask" hidden>${addTaskFormHtml()}</div>
+    </div>
+    <div class="field" style="max-width:420px; margin-bottom:14px;">
+      <input id="searchInput" placeholder="Search by task, project or tag" value="${esc(state.search)}">
+    </div>
+    <div class="tabs">${tabs.map(([id, label]) => `<button class="tab ${state.tab === id ? 'active' : ''}" data-action="tab" data-tab="${id}">${label}</button>`).join('')}</div>
+    <div id="taskList">${taskListHtml(groups[state.tab])}</div>
+  `;
+}
+
+function addTaskFormHtml() {
+  return `
+    <div class="form-grid">
+      <div class="field"><label>Task title</label><input id="newTitle"></div>
+      <div class="field"><label>Description</label><textarea id="newDesc" rows="2"></textarea></div>
+      <div class="form-row">
+        <div class="field"><label>Priority</label>
+          <select id="newPriority"><option>Medium</option><option>High</option><option>Low</option></select>
+        </div>
+        <div class="field"><label>Due date</label><input id="newDue" type="date" value="${addDays(1)}"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Estimate (min)</label><input id="newEstimate" type="number" min="5" max="600" step="5" value="30"></div>
+        <div class="field"><label>Project</label><input id="newProject" value="My Work"></div>
+      </div>
+      <div class="field"><label>Tags</label><input id="newTags" placeholder="frontend, urgent"></div>
+    </div>
+    <button class="btn btn-primary" data-action="create-task">Create task</button>
+  `;
+}
+
+function taskListHtml(list) {
+  if (!list.length) return `<div class="empty">Nothing here.</div>`;
+  return list.map(t => {
+    const doneN = t.steps.filter(s => s.done).length;
+    const pct = t.steps.length ? Math.round(doneN / t.steps.length * 100) : 0;
+    return `
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:220px;">
+          <div class="task-name">${esc(t.title)}</div>
+          <div class="task-meta" style="margin-bottom:6px;">${esc(t.project)} · ${esc(t.tags) || 'No tags'} · ${t.estimate} min</div>
+          ${t.description ? `<div class="small" style="margin-bottom:8px;">${esc(t.description)}</div>` : ''}
+          ${t.steps.length ? `
+            <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+            <div class="small" style="margin-bottom:6px;">${doneN}/${t.steps.length} steps complete</div>
+            ${t.steps.map((s, i) => `
+              <label class="step-row ${s.done ? 'done' : ''}">
+                <input type="checkbox" ${s.done ? 'checked' : ''} data-action="toggle-step" data-task="${t.id}" data-step="${i}">
+                <span>${esc(s.text)}</span>
+              </label>`).join('')}
+          ` : `<button class="btn btn-sm" data-action="decompose" data-task="${t.id}">✻ Break into steps</button>`}
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; min-width:150px; align-items:flex-end;">
+          <select data-action="set-status" data-task="${t.id}">
+            ${['Todo', 'In Progress', 'Done'].map(s => `<option value="${s}" ${s === t.status ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+          <span class="small">Priority: <strong>${t.priority}</strong></span>
+          <span class="small">Due: ${t.dueDate || '—'}</span>
+          <button class="btn btn-sm btn-danger" data-action="delete-task" data-task="${t.id}">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderLab() {
+  const { summary, verdict, cls, ai, base } = evidenceSummary(state.runs);
+  const running = state.timer.running;
+  document.getElementById('main').innerHTML = `
+    <div class="panel-label"><span class="dot"></span>Evidence</div>
+    <div class="headline">AI Impact Lab</div>
+    <div class="sub">Run the same kind of work twice — once with your AI assistant (including Copilot) and once without — then let time, defects and rework decide whether it actually paid off.</div>
+
+    <div class="challenge-strip">
+      <div>
+        <div class="challenge-kicker">MICROSOFT INNOVATE · COPILOT PRODUCTIVITY TEST</div>
+        <div class="challenge-title">Same task. Same acceptance criteria. One honest comparison.</div>
+      </div>
+      <div class="protocol">
+        <span><b>1</b> No-AI</span>
+        <span><b>2</b> Copilot / AI-assisted</span>
+        <span><b>3</b> Compare effective time</span>
+      </div>
+    </div>
+
+    <div class="ledger">
+      <div class="ledger-title">⏱ Log a run</div>
+      <div class="card-note">Name the task and pick a mode once — time it if you like, then record the numbers below.</div>
+      <div class="form-row" style="margin-bottom:10px;">
+        <div class="field"><label>Task name</label><input id="benchName" value="${esc(state.timer.taskName)}"></div>
+        <div class="field"><label>Mode</label>
+          <select id="benchMode">
+            <option value="AI-assisted" ${state.timer.mode === 'AI-assisted' ? 'selected' : ''}>Copilot / AI-assisted</option>
+            <option value="No-AI" ${state.timer.mode === 'No-AI' ? 'selected' : ''}>No-AI</option>
+          </select>
+          <div class="small" style="margin-top:4px;">Use the AI-assisted side for a real Copilot-assisted run. The lab records the evidence you enter; it does not invent results.</div>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-bottom:10px;">
+        ${running
+          ? `<button class="btn btn-primary" data-action="stop-timer">■ Stop timing</button><span class="mono" id="liveTimer" style="align-self:center;">0.0s</span>`
+          : `<button class="btn btn-primary" data-action="start-timer">▶ Start timing</button>`}
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Time (seconds)</label><input id="logSeconds" type="number" min="1" step="1" value="${state.logSeconds}"></div>
+        <div class="field"><label>Defects</label><input id="logDefects" type="number" min="0" step="1" value="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Rework minutes</label><input id="logRework" type="number" min="0" step="1" value="0"></div>
+        <div class="field"><label>What helped / slowed you down?</label><input id="logNote"></div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:12px;" data-action="log-run">Log this run</button>
+    </div>
+
+    ${state.runs.length === 0 ? `
+      <div class="card"><div class="empty">No runs logged yet. Time a small, comparable task twice — once with AI, once without — and log both above.</div></div>
+    ` : `
+      <div class="ledger">
+        <div class="ledger-title">Scorecard</div>
+        <div class="card-note">Speed and quality, reported separately — a single number would hide the trade-off.</div>
+        <div class="verdict ${cls}">${verdict}</div>
+        ${ai && base ? `
+          <div class="metrics">
+            <div class="metric"><div class="l">Avg time — AI-assisted</div><div class="v">${ai.avgTime.toFixed(0)}s</div>
+              <div class="d ${ai.avgTime > base.avgTime ? 'up' : 'down'}">${(ai.avgTime - base.avgTime >= 0 ? '+' : '')}${(ai.avgTime - base.avgTime).toFixed(0)}s vs No-AI</div></div>
+            <div class="metric"><div class="l">Avg time — No-AI</div><div class="v">${base.avgTime.toFixed(0)}s</div></div>
+            <div class="metric"><div class="l">Defect delta (AI − No-AI)</div><div class="v">${(ai.avgDefects - base.avgDefects >= 0 ? '+' : '')}${(ai.avgDefects - base.avgDefects).toFixed(1)}</div></div>
+          </div>` : ''}
+        <button class="disclosure" data-action="toggle-panel" data-panel="detail" style="margin-top:6px;">View scorecard table, chart and raw run log <span class="chev">›</span></button>
+        <div class="panel" id="panel-detail" hidden>
+          ${summaryTableHtml(summary)}
+          ${barsHtml(summary)}
+          <div class="table-wrap">${runsTableHtml(state.runs)}</div>
+          <button class="btn" style="margin-top:10px;" data-action="export-csv">Download run log as CSV</button>
+        </div>
+      </div>
+    `}
+  `;
+  if (running) startLiveTimerTick();
+}
+
+function summaryTableHtml(summary) {
+  return `<div class="table-wrap"><table class="datatable">
+    <tr><th>Mode</th><th>Runs</th><th>Avg time (s)</th><th>Avg defects</th><th>Avg rework (min)</th></tr>
+    ${summary.map(s => `<tr><td>${s.mode}</td><td>${s.runs}</td><td>${s.avgTime.toFixed(1)}</td><td>${s.avgDefects.toFixed(1)}</td><td>${s.avgRework.toFixed(1)}</td></tr>`).join('')}
+  </table></div>`;
+}
+function barsHtml(summary) {
+  const maxTime = Math.max(1, ...summary.map(s => s.avgTime));
+  const colors = { 'AI-assisted': 'var(--signal)', 'No-AI': 'var(--baseline)' };
+  return `<div class="bars">${summary.map(s => `
+    <div class="bar-group">
+      <div class="bar-track"><div class="bar" style="height:${Math.max(4, s.avgTime / maxTime * 90)}px; background:${colors[s.mode] || 'var(--muted)'}"></div></div>
+      <div class="bar-label">${s.mode}<br><span class="mono">${s.avgTime.toFixed(0)}s</span></div>
+    </div>`).join('')}</div>`;
+}
+function runsTableHtml(runs) {
+  const rows = [...runs].reverse();
+  return `<table class="datatable">
+    <tr><th>Task</th><th>Mode</th><th>Seconds</th><th>Defects</th><th>Rework</th><th>Note</th><th>Logged</th></tr>
+    ${rows.map(r => `<tr><td>${esc(r.taskName)}</td><td>${r.mode}</td><td>${r.seconds}</td><td>${r.defects}</td><td>${r.rework}</td><td>${esc(r.note)}</td><td class="small">${r.createdAt.replace('T',' ').slice(0,16)}</td></tr>`).join('')}
+  </table>`;
+}
+
+function render() {
+  renderSidebarNav();
+  if (state.nav === 'overview') renderOverview();
+  else if (state.nav === 'mywork') renderMyWork();
+  else renderLab();
+  restorePanelStates();
+}
+function restorePanelStates() {
+  for (const [name, open] of Object.entries(state.panels)) {
+    const btn = document.querySelector(`.disclosure[data-panel="${name}"]`);
+    const panel = document.getElementById('panel-' + name);
+    if (btn && panel) { panel.hidden = !open; btn.classList.toggle('open', !!open); }
+  }
+}
+
+/* ============================== Live timer ============================== */
+let tickHandle = null;
+function startLiveTimerTick() {
+  clearInterval(tickHandle);
+  tickHandle = setInterval(() => {
+    const el = document.getElementById('liveTimer');
+    if (!el || !state.timer.running) { clearInterval(tickHandle); return; }
+    el.textContent = ((Date.now() - state.timer.startTs) / 1000).toFixed(1) + 's';
+  }, 200);
+}
+
+/* ============================== Actions ============================== */
+async function handleCommand(raw) {
+  const resultEl = document.getElementById('commandResult');
+  if (!raw.trim()) return;
+  const wantsCreate = /(add task|create task|remind me|to-?do|add a task)/i.test(raw);
+  if (wantsCreate) {
+    const parsed = parseQuickAdd(raw);
+    if (parsed && parsed.title) {
+      const t = { id: uid('t'), title: parsed.title, description: 'Created from the TaskPilot command bar',
+        priority: parsed.priority, status: 'Todo', dueDate: parsed.dueDate, project: 'My Work', tags: parsed.tags,
+        estimate: 30, steps: [], createdAt: new Date().toISOString(), completedAt: null };
+      state.tasks.unshift(t); persistTasks();
+      toast(`Task created: ${parsed.title}`, '✅');
+      render();
+      return;
+    }
+  }
+  if (state.settings.apiKey.trim()) {
+    if (resultEl) resultEl.innerHTML = `<div class="insight">Thinking…</div>`;
+    const { text, err } = await aiChat(
+      'You are TaskPilot, an intelligent enterprise work assistant. Be concise, practical and specific. Never claim an action happened unless it actually did. Help with prioritization, planning, decomposition, risk detection and summaries.',
+      `User command: ${raw}\n\nCurrent tasks:\n${JSON.stringify(state.tasks)}\n\nRespond directly and helpfully.`
+    );
+    if (text) { if (resultEl) resultEl.innerHTML = `<div class="insight"><strong>TaskPilot</strong>${esc(text)}</div>`; return; }
+    if (err && err !== 'missing_key' && resultEl) resultEl.innerHTML = `<div class="insight" style="border-color:var(--red)">AI request failed (${esc(err)}). Falling back to local logic.</div>`;
+  }
+  if (resultEl) resultEl.innerHTML = `<div class="insight"><strong>TaskPilot</strong>${localInsight()}</div>`;
+}
+
+const actions = {
+  nav(el) { state.nav = el.dataset.nav; state.sidebarOpen = false; document.getElementById('sidebar').classList.remove('open'); render(); },
+  'toggle-sidebar'() { state.sidebarOpen = !state.sidebarOpen; document.getElementById('sidebar').classList.toggle('open', state.sidebarOpen); },
+  'toggle-panel'(el) {
+    const name = el.dataset.panel;
+    state.panels[name] = !state.panels[name];
+    const panel = document.getElementById('panel-' + name);
+    if (panel) panel.hidden = !state.panels[name];
+    el.classList.toggle('open', !!state.panels[name]);
+  },
+  'reset-tasks'() { state.tasks = seedTasks(); persistTasks(); toast('Demo tasks reset', '↺'); render(); },
+  'clear-runs-ask'() { state.confirmClearRuns = true; renderSidebarNav(); },
+  'clear-runs-cancel'() { state.confirmClearRuns = false; renderSidebarNav(); },
+  'clear-runs-confirm'() { state.runs = []; persistRuns(); state.confirmClearRuns = false; toast('Evidence log cleared', '🗑️'); renderSidebarNav(); if (state.nav === 'lab') renderLab(); },
+  'run-command'() { const input = document.getElementById('commandInput'); handleCommand(input.value); input.value = ''; },
+  async 'plan-day'() {
+    const el = document.getElementById('fastActionResult');
+    if (state.settings.apiKey.trim()) {
+      el.innerHTML = `<div class="insight">Planning…</div>`;
+      const { text } = await aiChat('You are TaskPilot.', `Create a concise 4-step plan for today from these tasks: ${JSON.stringify(state.tasks)}`);
+      el.innerHTML = `<div class="insight">${esc(text || localInsight())}</div>`;
+    } else el.innerHTML = `<div class="insight">${localInsight()}</div>`;
+  },
+  async 'clean-backlog'() {
+    const el = document.getElementById('fastActionResult');
+    if (state.settings.apiKey.trim()) {
+      el.innerHTML = `<div class="insight">Reviewing…</div>`;
+      const { text } = await aiChat('You are TaskPilot.', `Review this backlog and tell me what to do next, delay or remove, with one line of reasoning each: ${JSON.stringify(state.tasks)}`);
+      el.innerHTML = `<div class="insight">${esc(text || 'Use the command bar to ask this directly.')}</div>`;
+    } else el.innerHTML = `<div class="insight">Use the command bar: “Review my backlog and tell me what should be done, delayed or removed.”</div>`;
+  },
+  'create-task'() {
+    const title = document.getElementById('newTitle').value.trim();
+    if (!title) { toast('Give the task a title first'); return; }
+    const t = {
+      id: uid('t'), title, description: document.getElementById('newDesc').value,
+      priority: document.getElementById('newPriority').value, status: 'Todo',
+      dueDate: document.getElementById('newDue').value || null, project: document.getElementById('newProject').value || 'My Work',
+      tags: document.getElementById('newTags').value, estimate: parseInt(document.getElementById('newEstimate').value, 10) || 30,
+      steps: [], createdAt: new Date().toISOString(), completedAt: null,
+    };
+    state.tasks.unshift(t); persistTasks();
+    toast(`Task created: ${title}`, '✅');
+    state.panels.addtask = false;
+    render();
+  },
+  tab(el) { state.tab = el.dataset.tab; render(); },
+  'set-status'(el) {
+    const t = state.tasks.find(x => x.id === el.dataset.task);
+    if (!t) return;
+    t.status = el.value; t.completedAt = el.value === 'Done' ? new Date().toISOString() : null;
+    persistTasks(); render();
+  },
+  async decompose(el) {
+    const t = state.tasks.find(x => x.id === el.dataset.task);
+    if (!t) return;
+    el.textContent = 'Breaking this down…'; el.disabled = true;
+    const { steps, source } = await decomposeTask(t);
+    t.steps = steps.map(s => ({ text: s, done: false }));
+    persistTasks();
+    toast('Steps added' + (source === 'ai' ? ' (AI)' : ' (local logic — add an API key for tailored steps)'), '🧩');
+    render();
+  },
+  'toggle-step'(el) {
+    const t = state.tasks.find(x => x.id === el.dataset.task);
+    if (!t) return;
+    t.steps[+el.dataset.step].done = el.checked;
+    persistTasks(); render();
+  },
+  'delete-task'(el) { state.tasks = state.tasks.filter(x => x.id !== el.dataset.task); persistTasks(); render(); },
+  'start-timer'() {
+    state.timer.taskName = document.getElementById('benchName').value || 'Untitled run';
+    state.timer.mode = document.getElementById('benchMode').value;
+    state.timer.running = true; state.timer.startTs = Date.now();
+    renderLab();
+  },
+  'stop-timer'() {
+    const elapsed = (Date.now() - state.timer.startTs) / 1000;
+    state.logSeconds = Math.max(1, Math.round(elapsed * 10) / 10);
+    state.timer.running = false; clearInterval(tickHandle);
+    renderLab();
+  },
+  'log-run'() {
+    const run = {
+      id: uid('r'), taskName: document.getElementById('benchName').value || state.timer.taskName,
+      mode: document.getElementById('benchMode').value,
+      seconds: parseFloat(document.getElementById('logSeconds').value) || 1,
+      defects: parseInt(document.getElementById('logDefects').value, 10) || 0,
+      rework: parseFloat(document.getElementById('logRework').value) || 0,
+      note: document.getElementById('logNote').value, createdAt: new Date().toISOString(),
+    };
+    state.runs.push(run); persistRuns();
+    state.logSeconds = 300;
+    toast(`Run logged: ${run.taskName} (${run.mode})`, '📊');
+    renderLab();
+  },
+  'export-csv'() {
+    const header = 'task_name,mode,seconds,defects,rework,note,created_at\n';
+    const body = state.runs.map(r => [r.taskName, r.mode, r.seconds, r.defects, r.rework, r.note, r.createdAt]
+      .map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([header + body], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'taskpilot_evidence_log.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  },
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el || el.tagName === 'SELECT' || el.type === 'checkbox') return;
+  const fn = actions[el.dataset.action];
+  if (fn) fn(el, e);
+});
+// Native <select> elements (and checkboxes) commit their value via "change",
+// not "click" — route those separately so status/step updates are never
+// silently missed, and so each toggle only fires its handler once.
+document.addEventListener('change', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el || (el.tagName !== 'SELECT' && el.type !== 'checkbox')) return;
+  const fn = actions[el.dataset.action];
+  if (fn) fn(el, e);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'commandInput') actions['run-command']();
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'modelInput') { state.settings.model = e.target.value; persistSettings(); }
+  if (e.target.id === 'keyInput') { state.settings.apiKey = e.target.value; persistSettings(); document.getElementById('aiStatus').textContent = state.settings.apiKey.trim() ? '🟢 Live AI connected' : '⚪ Running on local logic — no API key set'; }
+  if (e.target.id === 'searchInput') {
+    state.search = e.target.value; renderMyWork(); restorePanelStates();
+    const s = document.getElementById('searchInput'); if (s) { s.focus(); s.selectionStart = s.selectionEnd = s.value.length; }
+  }
+});
+
+render();
+</script>
+</body>
+</html>
